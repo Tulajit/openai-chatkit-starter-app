@@ -2,26 +2,27 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 
 /**
- * Fetches FareHarbor availability for the next 90 days for a given item ID.
- * Example: /api/fh/availability?item=52773
+ * Fetches FareHarbor availability for a specific date and item.
+ * Example: /api/fh/availability?item=52773&date=2025-10-26
  */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const itemId = searchParams.get("item");
+  const date = searchParams.get("date"); // YYYY-MM-DD format
 
-  if (!itemId) {
-    return NextResponse.json({ error: "Missing ?item parameter" }, { status: 400 });
+  if (!itemId || !date) {
+    return NextResponse.json(
+      { error: "Missing required parameters. Use ?item=ITEM_ID&date=YYYY-MM-DD" },
+      { status: 400 }
+    );
   }
 
   const shortname = process.env.FH_SHORTNAME!;
   const appKey = process.env.FH_APP_KEY!;
   const userKey = process.env.FH_USER_KEY!;
-  const today = new Date();
-  const endDate = new Date();
-  endDate.setDate(today.getDate() + 90); // 90 days from today
 
   try {
-    const url = `https://fareharbor.com/api/external/v1/companies/${shortname}/items/${itemId}/availability/?start_date=${today.toISOString().split("T")[0]}&end_date=${endDate.toISOString().split("T")[0]}`;
+    const url = `https://fareharbor.com/api/external/v1/companies/${shortname}/items/${itemId}/availability/${date}/`;
 
     const res = await fetch(url, {
       headers: {
@@ -34,10 +35,13 @@ export async function GET(req: Request) {
 
     if (!res.ok) {
       const text = await res.text();
-      return NextResponse.json({ error: "FareHarbor availability request failed", status: res.status, body: text }, { status: res.status });
+      return NextResponse.json(
+        { error: "FareHarbor API request failed", status: res.status, body: text },
+        { status: res.status }
+      );
     }
 
-    const data: unknown = await res.json();
+    const data = await res.json();
     return NextResponse.json(data, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Server error";
@@ -45,4 +49,3 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
