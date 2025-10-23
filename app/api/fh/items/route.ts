@@ -23,9 +23,12 @@ export async function GET() {
 
     const data = await res.json();
     return NextResponse.json(data);
-  } catch (err: any) {
-    console.error("FH items route error:", err);
-    return NextResponse.json({ error: err.message || "Server error" }, { status: 500 });
+  } catch (err: unknown) {
+    const message =
+      typeof err === "object" && err && "toString" in err
+        ? String(err)
+        : "Server error";
+    console.error("FH items route error:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
