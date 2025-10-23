@@ -1,25 +1,23 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    // Hardcode only the items your chatbot should use
+    // Only include tours you want your chatbot to talk about
     const items = [
       {
         id: 52773,
         name: "Sunset Cruise",
-        description: "A 2.5-hour evening cruise around San Diego Bay with live music and cocktails.",
+        description: "A 2.5-hour evening cruise around San Diego Bay aboard the Triton Catamaran, featuring cocktails, music, and stunning skyline views.",
         duration: "2.5 hours",
-        url: "https://fareharbor.com/missionbaysportcenter/items/52773/"
+        url: "https://fareharbor.com/triton-charters/items/52773/"
       },
       {
         id: 52770,
         name: "Private Charter",
-        description: "Book a private yacht charter for any occasion, up to 80 guests.",
+        description: "A private yacht charter aboard the Triton Catamaran for birthdays, bachelorette parties, and corporate events. Fully customizable.",
         duration: "Flexible",
-        url: "https://fareharbor.com/missionbaysportcenter/items/52770/"
+        url: "https://fareharbor.com/triton-charters/items/52770/"
       }
     ];
 
