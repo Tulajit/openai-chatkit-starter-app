@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const itemId = searchParams.get("item");
-  const date = searchParams.get("date"); // YYYY-MM-DD format
+  const date = searchParams.get("date"); // YYYY-MM-DD
 
   if (!itemId || !date) {
     return NextResponse.json(
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   const userKey = process.env.FH_USER_KEY!;
 
   try {
-    const url = `https://fareharbor.com/api/external/v1/companies/${shortname}/items/${itemId}/availability/${date}/`;
+    const url = `https://fareharbor.com/api/external/v1/companies/${shortname}/items/${itemId}/availabilities/date/${date}/`;
 
     const res = await fetch(url, {
       headers: {
