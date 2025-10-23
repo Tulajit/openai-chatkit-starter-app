@@ -1,45 +1,32 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 export const runtime = 'nodejs';
-
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const shortname = process.env.FH_SHORTNAME;
-  const appKey = process.env.FH_APP_KEY;
-  const userKey = process.env.FH_USER_KEY;
-
-  if (!shortname || !appKey || !userKey) {
-    return NextResponse.json(
-      { error: "Missing FareHarbor environment variables" },
-      { status: 500 }
-    );
-  }
-
   try {
-    const res = await fetch(
-      `https://fareharbor.com/api/external/v1/companies/${shortname}/items/`,
+    // Hardcode only the items your chatbot should use
+    const items = [
       {
-        headers: {
-          "X-FareHarbor-API-App": appKey,
-          "X-FareHarbor-API-User": userKey,
-          "Accept": "application/json",
-        },
-        cache: "no-store",
+        id: 52773,
+        name: "Sunset Cruise",
+        description: "A 2.5-hour evening cruise around San Diego Bay with live music and cocktails.",
+        duration: "2.5 hours",
+        url: "https://fareharbor.com/missionbaysportcenter/items/52773/"
+      },
+      {
+        id: 52770,
+        name: "Private Charter",
+        description: "Book a private yacht charter for any occasion, up to 80 guests.",
+        duration: "Flexible",
+        url: "https://fareharbor.com/missionbaysportcenter/items/52770/"
       }
-    );
+    ];
 
-    if (!res.ok) {
-      const body = await res.text();
-      return NextResponse.json(
-        { error: "FareHarbor API request failed", status: res.status, body },
-        { status: res.status }
-      );
-    }
-
-    const data = await res.json();
-    return NextResponse.json(data, { status: 200 });
-  } catch {
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json(items, { status: 200 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Server error";
+    console.error("Items route error:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
