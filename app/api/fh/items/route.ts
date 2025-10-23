@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
