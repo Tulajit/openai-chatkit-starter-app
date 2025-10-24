@@ -1,6 +1,32 @@
 export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 
+interface FareHarborCustomerType {
+  singular: string;
+  plural: string;
+  note: string;
+}
+
+interface FareHarborCustomerTypeRate {
+  total: number;
+  customer_type: FareHarborCustomerType;
+}
+
+interface FareHarborAvailability {
+  start_at: string;
+  end_at: string;
+  capacity: number;
+  online_booking_status: string;
+  customer_type_rates?: FareHarborCustomerTypeRate[];
+}
+
+interface FareHarborResponse {
+  availabilities: FareHarborAvailability[];
+  item?: {
+    name?: string;
+  };
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const itemId = searchParams.get("item");
@@ -44,7 +70,7 @@ export async function GET(req: Request) {
       );
     }
 
-    const data = await res.json();
+    const data = await res.json() as FareHarborResponse;
     
     // Simplify to just the essential info
     if (!data.availabilities || data.availabilities.length === 0) {
@@ -55,7 +81,7 @@ export async function GET(req: Request) {
     }
 
     // Format times in readable format
-    const availabilitySlots = data.availabilities.map((slot: any) => {
+    const availabilitySlots = data.availabilities.map((slot: FareHarborAvailability) => {
       const startTime = new Date(slot.start_at).toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
@@ -70,7 +96,7 @@ export async function GET(req: Request) {
       const bookingStatus = slot.online_booking_status === 'available' ? 'Available' : 'Call to book';
       
       // Get pricing
-      const adultRate = slot.customer_type_rates?.find((r: any) => 
+      const adultRate = slot.customer_type_rates?.find((r: FareHarborCustomerTypeRate) => 
         r.customer_type.singular === 'Adult'
       );
       const price = adultRate ? `$${(adultRate.total / 100).toFixed(2)}` : 'Contact for pricing';
