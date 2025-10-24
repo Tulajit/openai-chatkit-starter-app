@@ -17,13 +17,20 @@ export async function GET(req: Request) {
     );
   }
 
-  const shortname = process.env.FH_SHORTNAME!;
-  const appKey = process.env.FH_APP_KEY!;
-  const userKey = process.env.FH_USER_KEY!;
+  const shortname = process.env.FAREHARBOR_SHORTNAME || process.env.FH_SHORTNAME;
+  const appKey = process.env.FAREHARBOR_APP_KEY || process.env.FH_APP_KEY;
+  const userKey = process.env.FAREHARBOR_USER_KEY || process.env.FH_USER_KEY;
+
+  if (!shortname || !appKey || !userKey) {
+    return NextResponse.json(
+      { error: "Missing FareHarbor credentials in environment variables" },
+      { status: 500 }
+    );
+  }
 
   try {
     const url = `https://fareharbor.com/api/external/v1/companies/${shortname}/items/${itemId}/availabilities/date/${date}/`;
-
+    
     const res = await fetch(url, {
       headers: {
         "X-FareHarbor-API-App": appKey,
@@ -43,9 +50,25 @@ export async function GET(req: Request) {
 
     const data = await res.json();
     return NextResponse.json(data, { status: 200 });
+    
   } catch (err) {
     const message = err instanceof Error ? err.message : "Server error";
     console.error("FH availability route error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+```
+
+---
+
+## **Now Check Your Vercel Environment Variables:**
+
+Go to Vercel → Your Project → **Settings** → **Environment Variables**
+
+You should have:
+```
+OPENAI_API_KEY = sk-proj-...
+OPENAI_WORKFLOW_ID = your-workflow-id
+FAREHARBOR_SHORTNAME = triton-charters
+FAREHARBOR_APP_KEY = your-app-key
+FAREHARBOR_USER_KEY = your-user-key
