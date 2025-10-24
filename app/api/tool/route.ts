@@ -78,10 +78,11 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Tools API Error:", error);
+    const message = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(
-      { error: error?.message || "Internal server error" },
+      { error: message },
       { status: 500 }
     );
   }
