@@ -53,7 +53,7 @@ export function ChatKitPanel({
   const [errors, setErrors] = useState<ErrorState>(() => createInitialErrors());
   const [isInitializingSession, setIsInitializingSession] = useState(true);
   const isMountedRef = useRef(true);
-  const [scriptStatus, setScriptStatus] = useState<
+  const [scriptStatus, setScriptStatus] = useState
     "pending" | "ready" | "error"
   >(() =>
     isBrowser && window.customElements?.get("openai-chatkit")
@@ -193,7 +193,6 @@ export function ChatKitPanel({
           body: JSON.stringify({
             workflow: { id: WORKFLOW_ID },
             chatkit_configuration: {
-              // enable attachments
               file_upload: {
                 enabled: true,
               },
@@ -274,89 +273,27 @@ export function ChatKitPanel({
     composer: {
       placeholder: PLACEHOLDER_INPUT,
       attachments: {
-        // Enable attachments
         enabled: true,
       },
     },
     threadItemActions: {
       feedback: false,
     },
-   onClientTool: async (invocation: {
-  name: string;
-  params: Record<string, unknown>;
-}) => {
-  // Existing theme switching
-  if (invocation.name === "switch_theme") {
-    const requested = invocation.params.theme;
-    if (requested === "light" || requested === "dark") {
-      if (isDev) {
-        console.debug("[ChatKitPanel] switch_theme", requested);
+    onClientTool: async (invocation: {
+      name: string;
+      params: Record<string, unknown>;
+    }) => {
+      if (invocation.name === "switch_theme") {
+        const requested = invocation.params.theme;
+        if (requested === "light" || requested === "dark") {
+          if (isDev) {
+            console.debug("[ChatKitPanel] switch_theme", requested);
+          }
+          onThemeRequest(requested);
+          return { success: true };
+        }
+        return { success: false };
       }
-      onThemeRequest(requested);
-      return { success: true };
-    }
-    return { success: false };
-  }
-
-  // Existing fact recording
-  if (invocation.name === "record_fact") {
-    const id = String(invocation.params.fact_id ?? "");
-    const text = String(invocation.params.fact_text ?? "");
-    if (!id || processedFacts.current.has(id)) {
-      return { success: true };
-    }
-    processedFacts.current.add(id);
-    void onWidgetAction({
-      type: "save",
-      factId: id,
-      factText: text.replace(/\s+/g, " ").trim(),
-    });
-    return { success: true };
-  }
-
-  // NEW: Handle FareHarbor function calls
-  if (invocation.name === "get_items" || 
-      invocation.name === "get_availability" || 
-      invocation.name === "get_booking_link") {
-    
-    try {
-      const response = await fetch('/api/tool', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: invocation.name,
-          arguments: invocation.params
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[ChatKitPanel] ${invocation.name} failed:`, errorText);
-        return { 
-          success: false, 
-          error: `Failed to ${invocation.name}: ${errorText}` 
-        };
-      }
-
-      const result = await response.json();
-      
-      if (isDev) {
-        console.debug(`[ChatKitPanel] ${invocation.name} result:`, result);
-      }
-
-      return result;
-      
-    } catch (error) {
-      console.error(`[ChatKitPanel] ${invocation.name} error:`, error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      };
-    }
-  }
-
-  return { success: false };
-},
 
       if (invocation.name === "record_fact") {
         const id = String(invocation.params.fact_id ?? "");
@@ -373,6 +310,51 @@ export function ChatKitPanel({
         return { success: true };
       }
 
+      // Handle FareHarbor function calls
+      if (invocation.name === "get_items" || 
+          invocation.name === "get_availability" || 
+          invocation.name === "get_booking_link") {
+        
+        try {
+          if (isDev) {
+            console.debug(`[ChatKitPanel] Calling ${invocation.name}`, invocation.params);
+          }
+
+          const response = await fetch('/api/tool', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: invocation.name,
+              arguments: invocation.params
+            })
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`[ChatKitPanel] ${invocation.name} failed:`, errorText);
+            return { 
+              success: false, 
+              error: `Failed to ${invocation.name}: ${errorText}` 
+            };
+          }
+
+          const result = await response.json();
+          
+          if (isDev) {
+            console.debug(`[ChatKitPanel] ${invocation.name} result:`, result);
+          }
+
+          return result;
+          
+        } catch (error) {
+          console.error(`[ChatKitPanel] ${invocation.name} error:`, error);
+          return { 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Unknown error' 
+          };
+        }
+      }
+
       return { success: false };
     },
     onResponseEnd: () => {
@@ -385,8 +367,6 @@ export function ChatKitPanel({
       processedFacts.current.clear();
     },
     onError: ({ error }: { error: unknown }) => {
-      // Note that Chatkit UI handles errors for your users.
-      // Thus, your app code doesn't need to display errors on UI.
       console.error("ChatKit error", error);
     },
   });
