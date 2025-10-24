@@ -85,14 +85,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-```
 
----
-
-## **After Creating This File:**
-
-1. Commit it to GitHub
-2. Vercel will auto-deploy
-3. Then configure your MCP server with URL:
-```
-   https://openai-chatkit-starter-app-ezgk.vercel.app/api/mcp
