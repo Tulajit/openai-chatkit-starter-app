@@ -1,14 +1,10 @@
 export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 
-/**
- * Fetches FareHarbor availability for a specific date and item.
- * Example: /api/fh/availability?item=52773&date=2025-10-26
- */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const itemId = searchParams.get("item");
-  const date = searchParams.get("date"); // YYYY-MM-DD
+  const date = searchParams.get("date");
 
   if (!itemId || !date) {
     return NextResponse.json(
@@ -49,7 +45,50 @@ export async function GET(req: Request) {
     }
 
     const data = await res.json();
-    return NextResponse.json(data, { status: 200 });
+    
+    // Simplify to just the essential info
+    if (!data.availabilities || data.availabilities.length === 0) {
+      return NextResponse.json({
+        available: false,
+        message: `No availability found for ${data.item?.name || 'this charter'} on ${date}`
+      });
+    }
+
+    // Format times in readable format
+    const availabilitySlots = data.availabilities.map((slot: any) => {
+      const startTime = new Date(slot.start_at).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'America/Los_Angeles'
+      });
+      const endTime = new Date(slot.end_at).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'America/Los_Angeles'
+      });
+      
+      const bookingStatus = slot.online_booking_status === 'available' ? 'Available' : 'Call to book';
+      
+      // Get pricing
+      const adultRate = slot.customer_type_rates?.find((r: any) => 
+        r.customer_type.singular === 'Adult'
+      );
+      const price = adultRate ? `$${(adultRate.total / 100).toFixed(2)}` : 'Contact for pricing';
+      
+      return {
+        time: `${startTime} - ${endTime}`,
+        status: bookingStatus,
+        capacity: slot.capacity,
+        price: price
+      };
+    });
+
+    return NextResponse.json({
+      available: true,
+      item_name: data.item?.name || 'Charter',
+      date: date,
+      slots: availabilitySlots
+    }, { status: 200 });
     
   } catch (err) {
     const message = err instanceof Error ? err.message : "Server error";
