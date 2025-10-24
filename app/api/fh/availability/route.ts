@@ -57,18 +57,3 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-```
-
----
-
-## **Now Check Your Vercel Environment Variables:**
-
-Go to Vercel → Your Project → **Settings** → **Environment Variables**
-
-You should have:
-```
-OPENAI_API_KEY = sk-proj-...
-OPENAI_WORKFLOW_ID = your-workflow-id
-FAREHARBOR_SHORTNAME = triton-charters
-FAREHARBOR_APP_KEY = your-app-key
-FAREHARBOR_USER_KEY = your-user-key
