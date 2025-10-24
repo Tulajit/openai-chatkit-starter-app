@@ -1,7 +1,8 @@
 export const runtime = "edge";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export async function POST(req) {
+export async function POST(req: NextRequest) {
   try {
     const { name, arguments: args } = await req.json();
     
@@ -77,10 +78,10 @@ export async function POST(req) {
       { status: 400 }
     );
     
-  } catch (error) {
+  } catch (error: any) {
     console.error("Tools API Error:", error);
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: error?.message || "Internal server error" },
       { status: 500 }
     );
   }
