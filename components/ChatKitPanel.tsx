@@ -281,21 +281,82 @@ export function ChatKitPanel({
     threadItemActions: {
       feedback: false,
     },
-    onClientTool: async (invocation: {
-      name: string;
-      params: Record<string, unknown>;
-    }) => {
-      if (invocation.name === "switch_theme") {
-        const requested = invocation.params.theme;
-        if (requested === "light" || requested === "dark") {
-          if (isDev) {
-            console.debug("[ChatKitPanel] switch_theme", requested);
-          }
-          onThemeRequest(requested);
-          return { success: true };
-        }
-        return { success: false };
+   onClientTool: async (invocation: {
+  name: string;
+  params: Record<string, unknown>;
+}) => {
+  // Existing theme switching
+  if (invocation.name === "switch_theme") {
+    const requested = invocation.params.theme;
+    if (requested === "light" || requested === "dark") {
+      if (isDev) {
+        console.debug("[ChatKitPanel] switch_theme", requested);
       }
+      onThemeRequest(requested);
+      return { success: true };
+    }
+    return { success: false };
+  }
+
+  // Existing fact recording
+  if (invocation.name === "record_fact") {
+    const id = String(invocation.params.fact_id ?? "");
+    const text = String(invocation.params.fact_text ?? "");
+    if (!id || processedFacts.current.has(id)) {
+      return { success: true };
+    }
+    processedFacts.current.add(id);
+    void onWidgetAction({
+      type: "save",
+      factId: id,
+      factText: text.replace(/\s+/g, " ").trim(),
+    });
+    return { success: true };
+  }
+
+  // NEW: Handle FareHarbor function calls
+  if (invocation.name === "get_items" || 
+      invocation.name === "get_availability" || 
+      invocation.name === "get_booking_link") {
+    
+    try {
+      const response = await fetch('/api/tool', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: invocation.name,
+          arguments: invocation.params
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[ChatKitPanel] ${invocation.name} failed:`, errorText);
+        return { 
+          success: false, 
+          error: `Failed to ${invocation.name}: ${errorText}` 
+        };
+      }
+
+      const result = await response.json();
+      
+      if (isDev) {
+        console.debug(`[ChatKitPanel] ${invocation.name} result:`, result);
+      }
+
+      return result;
+      
+    } catch (error) {
+      console.error(`[ChatKitPanel] ${invocation.name} error:`, error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
+  }
+
+  return { success: false };
+},
 
       if (invocation.name === "record_fact") {
         const id = String(invocation.params.fact_id ?? "");
