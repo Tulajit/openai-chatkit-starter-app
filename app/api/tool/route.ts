@@ -2,27 +2,25 @@ export const runtime = "edge";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+const PIPEDREAM_URL = "https://eowv0t158mirlw7.m.pipedream.net";
+
 export async function POST(req: NextRequest) {
   try {
     const { name, arguments: args } = await req.json();
     
-    // Get the base URL for internal API calls
-    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-    const host = req.headers.get('host') || 'localhost:3000';
-    const baseUrl = `${protocol}://${host}`;
-
     if (name === "get_items") {
-      const r = await fetch(`${baseUrl}/api/fh/items`, { 
-        cache: "no-store",
-        headers: { 'Content-Type': 'application/json' }
-      });
+      // Return hardcoded list of items
+      const items = [
+        { id: 257108, name: "Ticketed Harbor Cruise" },
+        { id: 613759, name: "Sunset Cruise in San Diego Bay" },
+        { id: 656686, name: "Two Hour Private Charter" },
+        { id: 658230, name: "Three Hour Private Charter" },
+        { id: 658231, name: "Four Hour Private Charter" },
+        { id: 662847, name: "Five Hour Private Charter" },
+        { id: 665608, name: "Six Hour Private Charter" }
+      ];
       
-      if (!r.ok) {
-        const errorText = await r.text();
-        throw new Error(`get_items failed: ${r.status} - ${errorText}`);
-      }
-      
-      return NextResponse.json(await r.json());
+      return NextResponse.json({ items });
     }
 
     if (name === "get_availability") {
@@ -30,23 +28,51 @@ export async function POST(req: NextRequest) {
       
       if (!item_id || !date) {
         return NextResponse.json(
-          { error: "Missing required parameters: item_id and date" },
+          { error: "Missing item_id or date" },
           { status: 400 }
         );
       }
 
-      const url = `${baseUrl}/api/fh/availability?item=${encodeURIComponent(item_id)}&date=${encodeURIComponent(date)}`;
-      const r = await fetch(url, { 
-        cache: "no-store",
-        headers: { 'Content-Type': 'application/json' }
+      // Call Pipedream with proper format
+      const response = await fetch(PIPEDREAM_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          item_pk: item_id,
+          start: date,
+          end: date,
+          tz: "America/Los_Angeles"
+        })
       });
-      
-      if (!r.ok) {
-        const errorText = await r.text();
-        throw new Error(`get_availability failed: ${r.status} - ${errorText}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Pipedream error: ${errorText}`);
       }
+
+      const data = await response.json();
       
-      return NextResponse.json(await r.json());
+      // Simplify response for the agent
+      const slots = (data.results || [])
+        .filter((slot: any) => slot.seats_open > 0)
+        .map((slot: any) => ({
+          time: `${slot.start_time} - ${slot.end_time}`,
+          seats_available: slot.seats_open,
+          status: slot.online_booking_status
+        }));
+
+      if (slots.length === 0) {
+        return NextResponse.json({
+          available: false,
+          message: `No availability found on ${date}`
+        });
+      }
+
+      return NextResponse.json({
+        available: true,
+        date: date,
+        slots: slots
+      });
     }
 
     if (name === "get_booking_link") {
@@ -54,20 +80,17 @@ export async function POST(req: NextRequest) {
       
       if (!item_id) {
         return NextResponse.json(
-          { error: "Missing required parameter: item_id" },
+          { error: "Missing item_id" },
           { status: 400 }
         );
       }
 
-      const shortname = process.env.FAREHARBOR_SHORTNAME || "triton-charters";
-      
-      // Build proper FareHarbor booking URL with optional date
-      let bookingUrl = `https://fareharbor.com/embeds/book/${shortname}/items/${encodeURIComponent(item_id)}/calendar/`;
+      const shortname = "triton-charters";
+      let bookingUrl = `https://fareharbor.com/embeds/book/${shortname}/items/${item_id}/calendar/`;
       
       if (date) {
-        // Format: 2025-12-15 -> /calendar/2025/12/?date=2025-12-15
         const [year, month] = date.split('-');
-        bookingUrl = `https://fareharbor.com/embeds/book/${shortname}/items/${encodeURIComponent(item_id)}/calendar/${year}/${month}/?date=${date}`;
+        bookingUrl = `https://fareharbor.com/embeds/book/${shortname}/items/${item_id}/calendar/${year}/${month}/?date=${date}`;
       }
       
       return NextResponse.json({ url: bookingUrl });
