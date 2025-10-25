@@ -4,23 +4,11 @@ import type { NextRequest } from "next/server";
 
 const PIPEDREAM_URL = "https://eowv0t158mirlw7.m.pipedream.net";
 
-interface PipedreamSlot {
-  start_time: string;
-  end_time: string;
-  seats_open: number;
-  online_booking_status: string;
-}
-
-interface PipedreamResponse {
-  results?: PipedreamSlot[];
-}
-
 export async function POST(req: NextRequest) {
   try {
     const { name, arguments: args } = await req.json();
     
     if (name === "get_items") {
-      // Return hardcoded list of items
       const items = [
         { id: 257108, name: "Ticketed Harbor Cruise" },
         { id: 613759, name: "Sunset Cruise in San Diego Bay" },
@@ -44,29 +32,27 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Call Pipedream with proper format
-      const response = await fetch(PIPEDREAM_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          item_pk: item_id,
-          start: date,
-          end: date,
-          tz: "America/Los_Angeles"
-        })
+      // Build GET URL with query parameters
+      const url = `${PIPEDREAM_URL}?item=${encodeURIComponent(item_id)}&start=${encodeURIComponent(date)}&end=${encodeURIComponent(date)}&tz=America/Los_Angeles`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { 
+          "Accept": "application/json"
+        }
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Pipedream error: ${errorText}`);
+        throw new Error(`Pipedream error: ${response.status} - ${errorText}`);
       }
 
-      const data = await response.json() as PipedreamResponse;
+      const data = await response.json();
       
       // Simplify response for the agent
       const slots = (data.results || [])
-        .filter((slot) => slot.seats_open > 0)
-        .map((slot) => ({
+        .filter((slot: { seats_open: number }) => slot.seats_open > 0)
+        .map((slot: { start_time: string; end_time: string; seats_open: number; online_booking_status: string }) => ({
           time: `${slot.start_time} - ${slot.end_time}`,
           seats_available: slot.seats_open,
           status: slot.online_booking_status
