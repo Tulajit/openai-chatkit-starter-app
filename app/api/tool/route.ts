@@ -4,6 +4,17 @@ import type { NextRequest } from "next/server";
 
 const PIPEDREAM_URL = "https://eowv0t158mirlw7.m.pipedream.net";
 
+interface PipedreamSlot {
+  start_time: string;
+  end_time: string;
+  seats_open: number;
+  online_booking_status: string;
+}
+
+interface PipedreamResponse {
+  results?: PipedreamSlot[];
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { name, arguments: args } = await req.json();
@@ -50,12 +61,12 @@ export async function POST(req: NextRequest) {
         throw new Error(`Pipedream error: ${errorText}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as PipedreamResponse;
       
       // Simplify response for the agent
       const slots = (data.results || [])
-        .filter((slot: any) => slot.seats_open > 0)
-        .map((slot: any) => ({
+        .filter((slot) => slot.seats_open > 0)
+        .map((slot) => ({
           time: `${slot.start_time} - ${slot.end_time}`,
           seats_available: slot.seats_open,
           status: slot.online_booking_status
