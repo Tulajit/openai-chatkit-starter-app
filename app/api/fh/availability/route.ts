@@ -16,6 +16,7 @@ interface FareHarborAvailability {
   start_at: string;
   end_at: string;
   capacity: number;
+  customer_count?: number;
   online_booking_status: string;
   customer_type_rates?: FareHarborCustomerTypeRate[];
 }
@@ -80,34 +81,56 @@ export async function GET(req: Request) {
       });
     }
 
-    // Format times in readable format
-    const availabilitySlots = data.availabilities.map((slot: FareHarborAvailability) => {
-      const startTime = new Date(slot.start_at).toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZone: 'America/Los_Angeles'
+    // Filter out full slots and format remaining ones
+    const availabilitySlots = data.availabilities
+      .filter((slot: FareHarborAvailability) => {
+        // Get capacity info
+        const capacity = slot.capacity || 0;
+        const booked = slot.customer_count || 0;
+        const available = capacity - booked;
+        
+        // Only include if there's availability
+        return available > 0;
+      })
+      .map((slot: FareHarborAvailability) => {
+        const startTime = new Date(slot.start_at).toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone: 'America/Los_Angeles'
+        });
+        const endTime = new Date(slot.end_at).toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone: 'America/Los_Angeles'
+        });
+        
+        const bookingStatus = slot.online_booking_status === 'available' ? 'Available online' : 'Call to book';
+        
+        // Get pricing
+        const adultRate = slot.customer_type_rates?.find((r: FareHarborCustomerTypeRate) => 
+          r.customer_type.singular === 'Adult'
+        );
+        const price = adultRate ? `$${(adultRate.total / 100).toFixed(2)}` : 'Contact for pricing';
+        
+        const capacity = slot.capacity || 0;
+        const booked = slot.customer_count || 0;
+        const spotsLeft = capacity - booked;
+        
+        return {
+          time: `${startTime} - ${endTime}`,
+          status: bookingStatus,
+          spots_available: spotsLeft,
+          price: price
+        };
       });
-      const endTime = new Date(slot.end_at).toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZone: 'America/Los_Angeles'
+
+    // Check if all slots were filtered out
+    if (availabilitySlots.length === 0) {
+      return NextResponse.json({
+        available: false,
+        message: `No availability found for ${data.item?.name || 'this charter'} on ${date}`
       });
-      
-      const bookingStatus = slot.online_booking_status === 'available' ? 'Available' : 'Call to book';
-      
-      // Get pricing
-      const adultRate = slot.customer_type_rates?.find((r: FareHarborCustomerTypeRate) => 
-        r.customer_type.singular === 'Adult'
-      );
-      const price = adultRate ? `$${(adultRate.total / 100).toFixed(2)}` : 'Contact for pricing';
-      
-      return {
-        time: `${startTime} - ${endTime}`,
-        status: bookingStatus,
-        capacity: slot.capacity,
-        price: price
-      };
-    });
+    }
 
     return NextResponse.json({
       available: true,
